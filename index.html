@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuizWhiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #e0e0e0;
+        }
+
+        .main-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .card {
+            background-color: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1.5rem;
+            border-radius: 1rem;
+        }
+
+        .btn {
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-option {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            white-space: normal;
+            word-break: break-word;
+            min-height: 4.5rem;
+            line-height: 1.3;
+            padding: 0.75rem;
+        }
+
+        .btn-option.correct {
+            background: linear-gradient(135deg, #28a745, #218838) !important;
+            color: white !important;
+            transform: scale(1.05);
+            border-color: #28a745;
+        }
+
+        .btn-option.incorrect {
+            background: linear-gradient(135deg, #dc3545, #c82333) !important;
+            color: white !important;
+            opacity: 0.7;
+        }
+
+        .feedback-text {
+            height: 24px;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        .difficulty-btn.selected {
+            background-color: #4c51bf;
+            color: white;
+            box-shadow: 0 0 15px rgba(76, 81, 191, 0.5);
+        }
+
+        #autocomplete-suggestions {
+            max-height: 200px;
+            overflow-y: auto;
+            border-radius: 0.5rem;
+            background-color: rgba(0, 0, 0, 0.6);
+            position: absolute;
+            width: calc(100% - 3rem);
+            left: 1.5rem;
+            z-index: 10;
+        }
+
+        #autocomplete-suggestions div {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+        }
+
+        #autocomplete-suggestions div:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .score-list-container {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .custom-select {
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3csvg%3e");
+            background-position: right 0.75rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #e0e0e0;
+            font-size: 1rem;
+            line-height: 1.5;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            width: 100%;
+        }
+
+        .custom-select:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .custom-select:focus {
+            outline: none;
+            border-color: #4c51bf;
+            box-shadow: 0 0 0 2px rgba(76, 81, 191, 0.5);
+        }
+
+        #question-info-overlay {
+            z-index: 60;
+        }
+    </style>
+</head>
+
+<body class="main-container">
+
+    <div id="game-wrapper" class="w-full max-w-md mx-auto">
+
+        <div id="settings-overlay"
+            class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+            <div class="card rounded-2xl p-6 sm:p-8 w-11/12 max-w-sm relative">
+                <button id="close-settings-btn"
+                    class="absolute top-3 right-4 text-2xl text-white/80 hover:text-white">&times;</button>
+                <h2 class="text-2xl font-bold text-center mb-6">Settings</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="bg-music-volume" class="block mb-1 text-sm font-semibold">Background Music</label>
+                        <input type="range" id="bg-music-volume" min="0" max="1" step="0.01" value="0.3"
+                            class="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div>
+                        <label for="sfx-volume" class="block mb-1 text-sm font-semibold">SFX Volume</label>
+                        <input type="range" id="sfx-volume" min="0" max="1" step="0.01" value="0.5"
+                            class="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div>
+                        <label for="host-voice-volume" class="block mb-1 text-sm font-semibold">Host Voice</label>
+                        <input type="range" id="host-voice-volume" min="0" max="1" step="0.01" value="0.8"
+                            class="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="highscores-overlay"
+            class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+            <div class="card rounded-2xl p-6 sm:p-8 w-11/12 max-w-md relative">
+                <button id="close-highscores-btn"
+                    class="absolute top-3 right-4 text-2xl text-white/80 hover:text-white">&times;</button>
+                <h2 class="text-2xl font-bold text-center mb-6">High Scores</h2>
+                <div class="score-list-container">
+                    <table class="w-full text-left table-auto">
+                        <thead>
+                            <tr class="bg-white/10">
+                                <th class="p-2 rounded-tl-lg">Score</th>
+                                <th class="p-2">Difficulty</th>
+                                <th class="p-2">Category</th>
+                                <th class="p-2 rounded-tr-lg">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="highscores-list">
+                        </tbody>
+                    </table>
+                    <p id="no-scores-message" class="text-center text-gray-400 mt-4 hidden">No scores yet. Play a game!
+                    </p>
+                </div>
+                <div class="flex justify-center mt-6">
+                    <button id="clear-highscores-btn"
+                        class="btn bg-red-600/80 text-white font-bold px-6 py-2 rounded-lg hover:bg-red-700">Clear
+                        Scores</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="question-info-overlay"
+            class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center hidden">
+            <div class="card rounded-2xl p-6 sm:p-8 w-11/12 max-w-sm text-center">
+                <p id="info-feedback-text" class="text-3xl font-bold mb-4"></p>
+                <p class="text-xl mb-2">The correct answer was:</p>
+                <p id="info-correct-answer" class="text-2xl font-bold mb-2"></p>
+                <p id="info-question-category" class="text-lg text-gray-300 mb-6"></p>
+                <button id="next-question-btn"
+                    class="btn bg-white/90 text-[#764ba2] font-bold px-8 py-3 rounded-lg hover:bg-white">Next
+                    Question</button>
+            </div>
+        </div>
+
+
+        <div id="start-screen" class="card rounded-2xl p-6 sm:p-8 text-center shadow-lg">
+            <h1 class="text-4xl font-bold mb-4">QuizWhiz</h1>
+            <p class="text-gray-300 mb-8">Select a category and difficulty to start!</p>
+
+            <div class="space-y-6">
+                <div id="category-selection-wrapper">
+                    <h2 class="text-2xl font-bold text-white mb-4">Select Category</h2>
+                    <select id="api-category-select" class="custom-select">
+                        <option value="any">Any Category</option>
+                    </select>
+                </div>
+
+                <div id="difficulty-selection" class="flex justify-center gap-4 mt-8">
+                    <button class="difficulty-btn btn bg-white/30 px-5 py-2.5 rounded-lg"
+                        data-difficulty="easy">Easy</button>
+                    <button class="difficulty-btn btn bg-white/30 px-5 py-2.5 rounded-lg selected"
+                        data-difficulty="medium">Medium</button>
+                    <button class="difficulty-btn btn bg-white/30 px-5 py-2.5 rounded-lg"
+                        data-difficulty="hard">Hard</button>
+                </div>
+                <button id="start-btn"
+                    class="btn w-full bg-white/90 text-[#764ba2] font-bold px-6 py-3 rounded-lg hover:bg-white mt-8">Start
+                    Quiz</button>
+                <button id="show-highscores-btn"
+                    class="btn w-full bg-white/30 text-white font-bold px-6 py-3 rounded-lg hover:bg-white/40 mt-4">High
+                    Scores</button>
+                <p id="start-error" class="text-red-400 mt-2 h-5"></p>
+            </div>
+        </div>
+
+        <div id="game-screen" class="hidden h-full flex flex-col">
+            <header id="game-header" class="grid grid-cols-3 items-center w-full mb-6 text-base sm:text-lg">
+                <div class="flex items-center gap-3 sm:gap-4">
+                    <button id="back-btn" class="btn text-2xl text-white/80 hover:text-white transition"><i
+                            class="fas fa-arrow-left"></i></button>
+                    <span>Score: <span id="score" class="font-bold">0</span></span>
+                </div>
+                <div class="text-center font-bold">
+                    <span id="question-progress">1/15</span>
+                </div>
+                <div class="flex items-center justify-end gap-3 sm:gap-4">
+                    <span>Time: <span id="timer" class="font-bold">10</span>s</span>
+                    <button id="settings-btn" class="btn text-2xl text-white/80 hover:text-white transition z-40"><i
+                            class="fas fa-cog"></i></button>
+                </div>
+            </header>
+
+            <main class="flex-grow flex flex-col items-center justify-center">
+                <div id="question-text" class="text-2xl sm:text-3xl font-bold text-center mb-8 px-4">
+                </div>
+                <div id="feedback-text" class="feedback-text text-center text-xl font-bold mb-6"></div>
+            </main>
+
+            <footer id="options-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 w-full px-4"></footer>
+        </div>
+
+        <div id="end-screen" class="card rounded-2xl p-8 text-center shadow-lg hidden">
+            <h2 class="text-3xl font-bold mb-4">Quiz Complete!</h2>
+            <p class="text-xl mb-8">Your final score is <span id="final-score" class="font-bold">0</span>.</p>
+            <button id="restart-btn"
+                class="btn bg-white/90 text-[#764ba2] font-bold px-8 py-3 rounded-lg hover:bg-white">Play
+                Again</button>
+        </div>
+    </div>
+
+    <audio id="bg-music"
+        src="https://cdn.pixabay.com/download/audio/2022/03/14/audio_356bd1bdff.mp3?filename=quiz-game-music-loop-bpm-90-61070.mp3"
+        loop preload="auto"></audio>
+    <audio id="sfx-correct"
+        src="https://cdn.pixabay.com/download/audio/2022/03/10/audio_49a54d836e.mp3?filename=item-pick-up-38258.mp3"
+        preload="auto"></audio>
+    <audio id="sfx-wrong" src="https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3"
+        preload="auto"></audio>
+    <audio id="sfx-button-click"
+        src="https://cdn.pixabay.com/download/audio/2025/06/09/audio_a113c58cc3.mp3?filename=digital-click-357350.mp3"
+        preload="auto"></audio>
+    <audio id="sfx-time-up"
+        src="https://cdn.pixabay.com/download/audio/2022/08/12/audio_b6f8111331.mp3?filename=microwave-timer-117077.mp3"
+        preload="auto"></audio>
+
+    <audio id="menu-music" src="https://cdn.pixabay.com/audio/2024/07/19/audio_27ca51ccd8.mp3" loop
+        preload="auto"></audio>
+
+    <audio id="host-intro-general" src="host_intro_general.mp3" preload="auto"></audio>
+    <audio id="host-intro-easy" src="host_intro_easy.mp3" preload="auto"></audio>
+    <audio id="host-intro-medium" src="host_intro_medium.mp3" preload="auto"></audio>
+    <audio id="host-intro-hard" src="host_intro_hard.mp3" preload="auto"></audio>
+
+    <audio id="host-question-1" src="host_question_1.mp3" preload="auto"></audio>
+    <audio id="host-question-2" src="host_question_2.mp3" preload="auto"></audio>
+    <audio id="host-question-3" src="host_question_3.mp3" preload="auto"></audio>
+    <audio id="host-question-4" src="host_question_4.mp3" preload="auto"></audio>
+    <audio id="host-correct-1" src="host_correct_1.mp3" preload="auto"></audio>
+    <audio id="host-correct-2" src="host_correct_2.mp3" preload="auto"></audio>
+    <audio id="host-correct-3" src="host_correct_3.mp3" preload="auto"></audio>
+    <audio id="host-correct-4" src="host_correct_4.mp3" preload="auto"></audio>
+    <audio id="host-correct-5" src="host_correct_5.mp3" preload="auto"></audio>
+    <audio id="host-incorrect-1" src="host_incorrect_1.mp3" preload="auto"></audio>
+    <audio id="host-incorrect-2" src="host_incorrect_2.mp3" preload="auto"></audio>
+    <audio id="host-incorrect-3" src="host_incorrect_3.mp3" preload="auto"></audio>
+    <audio id="host-incorrect-4" src="host_incorrect_4.mp3" preload="auto"></audio>
+    <audio id="host-incorrect-5" src="host_incorrect_5.mp3" preload="auto"></audio>
+    <audio id="host-timeup-1" src="host_timeup_1.mp3" preload="auto"></audio>
+    <audio id="host-timeup-2" src="host_timeup_2.mp3" preload="auto"></audio>
+    <audio id="host-between-1" src="host_between_1.mp3" preload="auto"></audio>
+    <audio id="host-between-2" src="host_between_2.mp3" preload="auto"></audio>
+    <audio id="host-between-3" src="host_between_3.mp3" preload="auto"></audio>
+    <audio id="host-between-4" src="host_between_4.mp3" preload="auto"></audio>
+    <audio id="host-end-standard" src="host_end_standard.mp3" preload="auto"></audio>
+    <audio id="host-end-good" src="host_end_good.mp3" preload="auto"></audio>
+    <audio id="host-end-average" src="host_end_average.mp3" preload="auto"></audio>
+    <audio id="host-end-low" src="host_end_low.mp3" preload="auto"></audio>
+    <audio id="host-end-playagain" src="host_end_playagain.mp3" preload="auto"></audio>
+
+    <script>
+        // DOM Elements
+        const settingsBtn = document.getElementById('settings-btn');
+        const closeSettingsBtn = document.getElementById('close-settings-btn');
+        const settingsOverlay = document.getElementById('settings-overlay');
+        const bgMusicVolumeSlider = document.getElementById('bg-music-volume');
+        const sfxVolumeSlider = document.getElementById('sfx-volume');
+        const hostVoiceVolumeSlider = document.getElementById('host-voice-volume');
+        const startScreen = document.getElementById('start-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const endScreen = document.getElementById('end-screen');
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const backBtn = document.getElementById('back-btn');
+        const scoreEl = document.getElementById('score');
+        const questionProgressEl = document.getElementById('question-progress');
+        const timerEl = document.getElementById('timer');
+        const questionTextEl = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const finalScoreEl = document.getElementById('final-score');
+        const startError = document.getElementById('start-error');
+        const feedbackText = document.getElementById('feedback-text');
+        const difficultyButtons = document.querySelectorAll('.difficulty-btn');
+        const bgMusic = document.getElementById('bg-music');
+        const sfxCorrect = document.getElementById('sfx-correct');
+        const sfxWrong = document.getElementById('sfx-wrong');
+        const sfxButtonClick = document.getElementById('sfx-button-click');
+        const sfxTimeUp = document.getElementById('sfx-time-up');
+
+        // New Menu Music Element
+        const menuMusic = document.getElementById('menu-music');
+
+
+        // Category Selection DOM elements
+        const apiCategorySelect = document.getElementById('api-category-select');
+
+        // High Scores DOM elements
+        const showHighscoresBtn = document.getElementById('show-highscores-btn');
+        const highscoresOverlay = document.getElementById('highscores-overlay');
+        const closeHighscoresBtn = document.getElementById('close-highscores-btn');
+        const highscoresList = document.getElementById('highscores-list');
+        const noScoresMessage = document.getElementById('no-scores-message');
+        const clearHighscoresBtn = document.getElementById('clear-highscores-btn');
+
+        // Question Info Overlay DOM elements
+        const questionInfoOverlay = document.getElementById('question-info-overlay');
+        const infoFeedbackText = document.getElementById('info-feedback-text');
+        const infoCorrectAnswer = document = document.getElementById('info-correct-answer');
+        const infoQuestionCategory = document.getElementById('info-question-category');
+        const nextQuestionBtn = document.getElementById('next-question-btn');
+
+        // QuizWhizzy Host Audio Elements
+        const hostAudio = {
+            introGeneral: document.getElementById('host-intro-general'),
+            introEasy: document.getElementById('host-intro-easy'),
+            introMedium: document.getElementById('host-intro-medium'),
+            introHard: document.getElementById('host-intro-hard'),
+            question: [
+                document.getElementById('host-question-1'),
+                document.getElementById('host-question-2'),
+                document.getElementById('host-question-3'),
+                document.getElementById('host-question-4'),
+            ],
+            correct: [
+                document.getElementById('host-correct-1'),
+                document.getElementById('host-correct-2'),
+                document.getElementById('host-correct-3'),
+                document.getElementById('host-correct-4'),
+                document.getElementById('host-correct-5'),
+            ],
+            incorrect: [
+                document.getElementById('host-incorrect-1'),
+                document.getElementById('host-incorrect-2'),
+                document.getElementById('host-incorrect-3'),
+                document.getElementById('host-incorrect-4'),
+                document.getElementById('host-incorrect-5'),
+            ],
+            timeUp: [
+                document.getElementById('host-timeup-1'),
+                document.getElementById('host-timeup-2'),
+            ],
+            betweenRounds: [
+                document.getElementById('host-between-1'),
+                document.getElementById('host-between-2'),
+                document.getElementById('host-between-3'),
+                document.getElementById('host-between-4'),
+            ],
+            endStandard: document.getElementById('host-end-standard'),
+            endGood: document.getElementById('host-end-good'),
+            endAverage: document.getElementById('host-end-average'),
+            endLow: document.getElementById('host-end-low'),
+            endPlayAgain: document.getElementById('host-end-playagain'),
+        };
+
+
+        // Game State & Settings
+        let questions = [];
+        let score = 0;
+        let currentQuestionIndex = 0;
+        let correctAnswer = '';
+        let currentQuestionCategory = '';
+        let timerInterval;
+        let difficulty = 'medium'; // Default difficulty
+        let selectedCategory = 'any';
+        let selectedCategoryName = 'Any Category';
+        let currentTimerValue = 0;
+        let correctStreak = 0; // To track correct answers for host dialogue variations
+        let isGameActive = false; // New flag to track if the game is active
+
+        const gameSettings = {
+            easy: { questions: 10, time: 15, baseScore: 100 },
+            medium: { questions: 15, time: 10, baseScore: 200 },
+            hard: { questions: 20, time: 5, baseScore: 300 }
+        };
+
+        // --- Utility Functions ---
+        function decodeHtml(html) {
+            const txt = document.createElement("textarea");
+            txt.innerHTML = html;
+            return txt.value;
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // Function to play host audio, stopping any current host audio first
+        function playHostAudio(audioElements) {
+            // Flatten the hostAudio object values to ensure all elements are covered
+            const allHostAudios = Object.values(hostAudio).flat();
+
+            allHostAudios.forEach(audio => {
+                // Check if the item is an actual audio element before trying to pause/reset
+                if (audio instanceof HTMLMediaElement) {
+                    audio.pause();
+                    audio.currentTime = 0;
+                }
+            });
+
+            let audioToPlay;
+            if (Array.isArray(audioElements)) {
+                const randomIndex = Math.floor(Math.random() * audioElements.length);
+                audioToPlay = audioElements[randomIndex];
+            } else {
+                audioToPlay = audioElements;
+            }
+
+            if (audioToPlay instanceof HTMLMediaElement) {
+                audioToPlay.play().catch(e => console.error("Error playing audio:", e)); // Add catch for play() promise
+                return audioToPlay.duration * 1000; // Return duration in milliseconds
+            }
+            return 0; // Return 0 if no audio is played
+        }
+
+        // --- Settings & UI Logic ---
+        settingsBtn.addEventListener('click', () => settingsOverlay.classList.remove('hidden'));
+        closeSettingsBtn.addEventListener('click', () => settingsOverlay.classList.add('hidden'));
+
+        bgMusicVolumeSlider.addEventListener('input', (e) => {
+            bgMusic.volume = e.target.value;
+        });
+
+        // New: Menu music volume also controlled by bgMusicVolumeSlider
+        bgMusicVolumeSlider.addEventListener('input', (e) => {
+            bgMusic.volume = e.target.value;
+            menuMusic.volume = e.target.value; // Control menu music volume
+        });
+
+        sfxVolumeSlider.addEventListener('input', (e) => {
+            sfxCorrect.volume = e.target.value;
+            sfxWrong.volume = e.target.value;
+            sfxButtonClick.volume = e.target.value;
+            sfxTimeUp.volume = e.target.value;
+        });
+
+        hostVoiceVolumeSlider.addEventListener('input', (e) => {
+            const volume = e.target.value;
+            // Iterate directly over the hostAudio object to set volume for all elements
+            for (const key in hostAudio) {
+                const audioItem = hostAudio[key];
+                if (Array.isArray(audioItem)) {
+                    audioItem.forEach(a => { if (a instanceof HTMLMediaElement) a.volume = volume; });
+                } else if (audioItem instanceof HTMLMediaElement) {
+                    audioItem.volume = volume;
+                }
+            }
+        });
+
+
+        // High Scores Event Listeners
+        showHighscoresBtn.addEventListener('click', () => {
+            displayHighScores();
+            highscoresOverlay.classList.remove('hidden');
+        });
+        closeHighscoresBtn.addEventListener('click', () => highscoresOverlay.classList.add('hidden'));
+        clearHighscoresBtn.addEventListener('click', () => {
+            localStorage.removeItem('quizWhizHighScores');
+            displayHighScores();
+        });
+
+        // Next Question Button Listener on Info Overlay
+        nextQuestionBtn.addEventListener('click', () => {
+            sfxButtonClick.currentTime = 0; // Play SFX for button click
+            sfxButtonClick.play(); // Play SFX for button click
+
+            questionInfoOverlay.classList.add('hidden'); // Hide the info overlay
+            currentQuestionIndex++; // Move to the next question
+
+            // Play a "between rounds" dialogue occasionally
+            if (currentQuestionIndex < questions.length && Math.random() < 0.4) { // 40% chance
+                playHostAudio(hostAudio.betweenRounds); // Play between rounds audio
+            }
+            displayQuestion(); // Proceed to the next question
+        });
+
+
+        difficultyButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                sfxButtonClick.currentTime = 0;
+                sfxButtonClick.play();
+                difficultyButtons.forEach(btn => btn.classList.remove('selected'));
+                button.classList.add('selected');
+                difficulty = button.dataset.difficulty;
+                checkStartButtonStatus();
+
+                // Play difficulty-specific host audio
+                let difficultyHostAudio;
+                if (difficulty === 'easy') {
+                    difficultyHostAudio = hostAudio.introEasy;
+                } else if (difficulty === 'medium') {
+                    difficultyHostAudio = hostAudio.introMedium;
+                } else if (difficulty === 'hard') {
+                    difficultyHostAudio = hostAudio.introHard;
+                }
+                playHostAudio(difficultyHostAudio);
+            });
+        });
+
+        apiCategorySelect.addEventListener('change', (e) => {
+            sfxButtonClick.currentTime = 0;
+            sfxButtonClick.play();
+            selectedCategory = e.target.value;
+            selectedCategoryName = e.target.options[e.target.selectedIndex].text;
+            checkStartButtonStatus();
+
+            // No category-specific host audio plays now as per user request to remove them.
+        });
+
+
+        startBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', backToStart);
+        backBtn.addEventListener('click', backToStart);
+
+        function backToStart() {
+            clearInterval(timerInterval); // Ensure timer is stopped
+            isGameActive = false; // Set game to inactive
+            timerEl.textContent = '10'; // Reset timer display
+            bgMusic.pause(); // Pause background music
+            bgMusic.currentTime = 0; // Rewind background music
+            menuMusic.play().catch(e => console.error("Error playing menu music:", e)); // Start menu music
+
+            gameScreen.classList.add('hidden'); // Hide game screen
+            endScreen.classList.add('hidden'); // Hide end screen
+            startScreen.classList.remove('hidden'); // Show start screen
+            questionInfoOverlay.classList.add('hidden'); // Hide any active info overlay
+
+            // Stop any currently playing host audio and reset its time
+            // Re-use playHostAudio's internal stopping mechanism by calling it with null
+            playHostAudio(null);
+
+            // Reset game state
+            score = 0;
+            currentQuestionIndex = 0;
+            correctStreak = 0; // Reset streak
+            difficulty = 'medium'; // Reset difficulty
+            selectedCategory = 'any'; // Reset category
+            selectedCategoryName = 'Any Category'; // Reset category name
+            questions = []; // Clear questions array
+
+            // Reset UI elements
+            document.querySelector('.difficulty-btn[data-difficulty="medium"]').classList.add('selected');
+            difficultyButtons.forEach(btn => {
+                if (btn.dataset.difficulty !== 'medium') btn.classList.remove('selected');
+            });
+            apiCategorySelect.value = 'any';
+            startError.textContent = '';
+            scoreEl.textContent = '0'; // Reset score display
+            checkStartButtonStatus(); // Re-evaluate start button status
+            playHostAudio(hostAudio.introGeneral); // Play general intro when returning to start screen
+        }
+
+        // --- Core Game Logic ---
+        async function fetchApiCategories() {
+            try {
+                const response = await fetch('https://opentdb.com/api_category.php');
+                if (!response.ok) throw new Error(`Failed to fetch categories: ${response.statusText}`);
+                const data = await response.json();
+                populateCategoryDropdown(data.trivia_categories);
+            } catch (error) {
+                console.error('Error fetching trivia categories:', error);
+                startError.textContent = 'Failed to load categories. Please try again.';
+            }
+        }
+
+        function populateCategoryDropdown(categories) {
+            apiCategorySelect.innerHTML = '<option value="any">Any Category</option>';
+            categories.sort((a, b) => a.name.localeCompare(b.name));
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.textContent = decodeHtml(category.name);
+                apiCategorySelect.appendChild(option);
+            });
+            selectedCategoryName = apiCategorySelect.options[apiCategorySelect.selectedIndex].text;
+            checkStartButtonStatus();
+        }
+
+        function checkStartButtonStatus() {
+            startBtn.disabled = !difficulty || !selectedCategory;
+        }
+
+        async function startGame() {
+            sfxButtonClick.currentTime = 0; // Play SFX for button click
+            sfxButtonClick.play(); // Play SFX for button click
+            startBtn.disabled = true;
+            startBtn.textContent = 'Loading...';
+            startError.textContent = '';
+
+            try {
+                let apiUrl = `https://opentdb.com/api.php?amount=${gameSettings[difficulty].questions}&type=multiple&encode=base64`;
+                if (selectedCategory !== 'any') {
+                    apiUrl += `&category=${selectedCategory}`;
+                }
+                apiUrl += `&difficulty=${difficulty}`;
+
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+
+                if (data.response_code !== 0) {
+                    let errorMessage = "Failed to fetch questions. ";
+                    if (data.response_code === 1) {
+                        errorMessage += "Not enough questions for the selected category and difficulty. Try different settings.";
+                    } else if (data.response_code === 2) {
+                        errorMessage += "Invalid API request. Please check parameters.";
+                    } else {
+                        errorMessage += `API Error Code: ${data.response_code}.`;
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                questions = data.results.map(q => ({
+                    question: decodeHtml(atob(q.question)),
+                    options: shuffleArray([...q.incorrect_answers.map(ans => decodeHtml(atob(ans))), decodeHtml(atob(q.correct_answer))]),
+                    answer: decodeHtml(atob(q.correct_answer)),
+                    category: decodeHtml(atob(q.category))
+                }));
+
+                if (questions.length === 0) {
+                    throw new Error("No questions found for the selected criteria. Please try different settings.");
+                }
+
+                score = 0;
+                currentQuestionIndex = 0;
+                correctStreak = 0; // Reset streak at game start
+                scoreEl.textContent = '0';
+                startScreen.classList.add('hidden');
+                gameScreen.classList.remove('hidden');
+                isGameActive = true; // Set game to active
+
+                menuMusic.pause(); // Stop menu music when quiz starts
+                menuMusic.currentTime = 0; // Rewind menu music
+                bgMusic.play().catch(e => console.error("Error playing background music:", e)); // Play quiz background music
+
+                // Stop any host audio that might be playing from selections (handled by playHostAudio's internal stop)
+                playHostAudio(null); // Call playHostAudio with null to trigger its stopping logic without playing new audio
+
+                // Display first question immediately
+                displayQuestion();
+
+            } catch (error) {
+                console.error('Error starting game:', error);
+                startError.textContent = error.message;
+            } finally {
+                startBtn.disabled = false;
+                startBtn.textContent = 'Start Quiz';
+            }
+        }
+
+        function displayQuestion() {
+            if (currentQuestionIndex >= questions.length) {
+                setTimeout(endGame, 500); // End the game if no more questions
+                return;
+            }
+
+            feedbackText.textContent = '';
+            optionsContainer.innerHTML = '';
+
+            questionProgressEl.textContent = `${currentQuestionIndex + 1}/${questions.length}`;
+
+            const currentQ = questions[currentQuestionIndex];
+            questionTextEl.textContent = currentQ.question; // Set question text
+            correctAnswer = currentQ.answer;
+            currentQuestionCategory = currentQ.category;
+
+            currentQ.options.forEach(option => {
+                const button = document.createElement('button');
+                button.textContent = option;
+                button.classList.add('btn', 'btn-option', 'w-full', 'rounded-lg', 'bg-white/20');
+                button.onclick = handleAnswerClick;
+                optionsContainer.appendChild(button);
+            });
+
+            const questionAudioDuration = playHostAudio(hostAudio.question); // Play question intro dialogue
+            setTimeout(startTimer, questionAudioDuration + 200); // Start timer slightly after host speaks
+        }
+
+        function handleAnswerClick(e) {
+            handleAnswer(e.target.textContent, e.target);
+        }
+
+        function handleAnswer(selectedOptionText, selectedButton) {
+            if (!isGameActive) return; // Only proceed if the game is active
+
+            clearInterval(timerInterval);
+
+            optionsContainer.querySelectorAll('button').forEach(button => button.disabled = true);
+
+            if (selectedOptionText === correctAnswer) {
+                selectedButton.classList.add('correct');
+                infoFeedbackText.textContent = "Correct!";
+                infoFeedbackText.classList.remove('text-red-400');
+                infoFeedbackText.classList.add('text-green-400');
+
+                const baseScore = gameSettings[difficulty].baseScore;
+                const timeLeftBonus = currentTimerValue * 10;
+                score += (baseScore + timeLeftBonus);
+                scoreEl.textContent = score;
+                sfxCorrect.play();
+                correctStreak++;
+
+                playHostAudio(hostAudio.correct);
+            } else {
+                if (selectedButton) selectedButton.classList.add('incorrect');
+                infoFeedbackText.textContent = selectedOptionText ? "Wrong!" : "Time's up!";
+                infoFeedbackText.classList.remove('text-green-400');
+                infoFeedbackText.classList.add('text-red-400');
+
+                optionsContainer.querySelectorAll('button').forEach(button => {
+                    if (button.textContent === correctAnswer) button.classList.add('correct');
+                });
+                sfxWrong.play();
+                correctStreak = 0; // Reset streak on incorrect answer
+
+                // Play incorrect or time up host dialogue
+                if (!selectedOptionText) { // If time's up
+                    playHostAudio(hostAudio.timeUp);
+                    sfxTimeUp.play(); // Play specific time up SFX
+                } else {
+                    playHostAudio(hostAudio.incorrect);
+                }
+            }
+
+            // Display info overlay after a short delay to let SFX/Host play a bit
+            // The duration of host correct/incorrect/timeup audio can vary.
+            // We'll estimate or use a small fixed delay.
+            const feedbackDisplayDelay = 700; // Milliseconds
+            setTimeout(() => {
+                infoCorrectAnswer.textContent = correctAnswer;
+                infoQuestionCategory.textContent = `Category: ${currentQuestionCategory}`;
+                questionInfoOverlay.classList.remove('hidden');
+            }, feedbackDisplayDelay);
+        }
+
+        function startTimer() {
+            let timeLeft = gameSettings[difficulty].time;
+            timerEl.textContent = timeLeft;
+            currentTimerValue = timeLeft;
+            clearInterval(timerInterval); // Clear any existing timer before starting a new one
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                currentTimerValue = timeLeft;
+                timerEl.textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    handleAnswer(null, null); // Time's up
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            bgMusic.pause(); // Pause background music
+            bgMusic.currentTime = 0; // Rewind background music
+            gameScreen.classList.add('hidden'); // Hide game screen
+            endScreen.classList.remove('hidden'); // Show end screen
+            finalScoreEl.textContent = `${score} / ${gameSettings[difficulty].questions}`;
+            isGameActive = false; // Game is no longer active
+
+            // Play Host End Game Dialogue
+            const endStandardDuration = playHostAudio(hostAudio.endStandard);
+
+            setTimeout(() => {
+                const maxPossibleScore = gameSettings[difficulty].questions * (gameSettings[difficulty].baseScore + gameSettings[difficulty].time * 10);
+                const scorePercentage = (score / maxPossibleScore) * 100;
+
+                let endScoreDuration = 0;
+                if (scorePercentage >= 80) {
+                    endScoreDuration = playHostAudio(hostAudio.endGood);
+                } else if (scorePercentage >= 50) {
+                    endScoreDuration = playHostAudio(hostAudio.endAverage);
+                } else {
+                    endScoreDuration = playHostAudio(hostAudio.endLow);
+                }
+
+                setTimeout(() => {
+                    playHostAudio(hostAudio.endPlayAgain);
+                }, endScoreDuration + 500); // Play after score feedback + 0.5s
+
+            }, endStandardDuration + 500); // Play after standard end + 0.5s
+
+
+            if (score > 0) {
+                saveScore({
+                    score: score,
+                    difficulty: difficulty,
+                    category: selectedCategoryName,
+                    date: new Date().toLocaleDateString()
+                });
+            }
+        }
+
+        // --- High Score Logic ---
+        function saveScore(scoreData) {
+            try {
+                const scores = loadScores();
+                scores.push(scoreData);
+                scores.sort((a, b) => b.score - a.score);
+                const topScores = scores.slice(0, 10); // Keep top 10
+                localStorage.setItem('quizWhizHighScores', JSON.stringify(topScores));
+            } catch (e) {
+                console.error("Failed to save score to local storage:", e);
+            }
+        }
+
+        function loadScores() {
+            try {
+                const scoresString = localStorage.getItem('quizWhizHighScores');
+                return scoresString ? JSON.parse(scoresString) : [];
+            } catch (e) {
+                console.error("Failed to load scores from local storage:", e);
+                return [];
+            }
+        }
+
+        function displayHighScores() {
+            const scores = loadScores();
+            highscoresList.innerHTML = '';
+            if (scores.length === 0) {
+                noScoresMessage.classList.remove('hidden');
+            } else {
+                noScoresMessage.classList.add('hidden');
+                scores.forEach((s, index) => {
+                    const row = document.createElement('tr');
+                    row.classList.add('border-b', 'border-white/10', 'last:border-b-0');
+                    row.innerHTML = `
+                        <td class="p-2">${s.score}</td>
+                        <td class="p-2">${s.difficulty.charAt(0).toUpperCase() + s.difficulty.slice(1)}</td>
+                        <td class="p-2">${s.category}</td>
+                        <td class="p-2">${s.date}</td>
+                    `;
+                    highscoresList.appendChild(row);
+                });
+            }
+        }
+
+        // Initial setup on load
+        bgMusic.volume = bgMusicVolumeSlider.value; // Set initial background music volume
+        menuMusic.volume = bgMusicVolumeSlider.value; // Set initial menu music volume
+        sfxVolumeSlider.value = 0.5; // Default SFX volume
+        sfxVolumeSlider.dispatchEvent(new Event('input')); // Trigger update
+        hostVoiceVolumeSlider.value = 0.8; // Default host voice volume
+        hostVoiceVolumeSlider.dispatchEvent(new Event('input')); // Trigger update for host volume
+        document.querySelector('.difficulty-btn[data-difficulty="medium"]').classList.add('selected');
+        fetchApiCategories(); // Load categories when the page starts
+        displayHighScores(); // Initial display of high scores
+
+        // Start menu music and general host intro on initial load
+        menuMusic.play().catch(e => console.error("Error playing menu music on load:", e));
+        playHostAudio(hostAudio.introGeneral);
+    </script>
+</body>
+
+</html>
